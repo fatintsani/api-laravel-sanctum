@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,18 +56,27 @@ class authController extends Controller
             ], 401);
         }
 
-        if(!Auth::attempt($request->only(['email', 'password']))) {
+        if (!Auth::attempt($request->only(['email', 'password']))) {
             return response()->json([
                 'status' => false,
                 'message' => 'Email atau password yang anda masukan salah',
             ], 401);
         }
-        
+
         $datauser = User::where('email', $request->email)->first();
+        $role = role::join("user_role", "user_role.role_id", "=", "roles.id")
+            ->join("users", "users.id", "=", "user_role.user_id")
+            ->where("user_id", $datauser->id)
+            ->pluck('roles.role_name')->toArray();
+
+        if (empty($role)) {
+            $role = ['*'];
+        }
+        
         return response()->json([
             'status' => true,
             'message' => 'berhasil proses login',
-            'token' => $datauser->createToken('api-product')->plainTextToken,
+            'token' => $datauser->createToken('api-product', $role)->plainTextToken,
         ], 200);
     }
 }
